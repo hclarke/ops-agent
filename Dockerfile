@@ -15,9 +15,10 @@
 # Build as DOCKER_BUILDKIT=1 docker build -o /tmp/out .
 # Generated tarball(s) will end up in /tmp/out
 
-FROM debian:buster AS buster
-
 # TODO: Factor out the common code without rerunning apt-get on every build.
+
+# Debian 10
+FROM debian:buster AS buster
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get -y install golang git systemd \
@@ -29,9 +30,8 @@ COPY . /work
 WORKDIR /work
 RUN ./build-deb.sh
 
+# Debian 9
 FROM debian:stretch AS stretch
-
-# TODO: Factor out the common code without rerunning apt-get on every build.
 
 RUN echo "deb http://deb.debian.org/debian stretch-backports main" > /etc/apt/sources.list.d/backports.list && \
     apt-get update && \
@@ -45,6 +45,20 @@ COPY . /work
 WORKDIR /work
 RUN ./build-deb.sh
 
+# Ubuntu 20.10
+FROM ubuntu:groovy AS groovy
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get -y install golang git systemd \
+    autoconf libtool libcurl4-openssl-dev libltdl-dev libssl-dev libyajl-dev \
+    build-essential cmake bison flex file libsystemd-dev \
+    devscripts cdbs
+
+COPY . /work
+WORKDIR /work
+RUN ./build-deb.sh
+
+# Ubuntu 20.04
 FROM ubuntu:focal AS focal
 
 RUN apt-get update && \
@@ -57,6 +71,7 @@ COPY . /work
 WORKDIR /work
 RUN ./build-deb.sh
 
+# Ubuntu 18.04
 FROM ubuntu:bionic AS bionic
 
 RUN apt-get update && \
@@ -72,6 +87,7 @@ COPY . /work
 WORKDIR /work
 RUN ./build-deb.sh
 
+# Ubuntu 16.04
 FROM ubuntu:xenial AS xenial
 
 RUN apt-get update && \
@@ -93,6 +109,7 @@ WORKDIR /work
 RUN echo DEBUILD_PREPEND_PATH=/usr/lib/go-1.11/bin >> /etc/devscripts.conf && \
     ./build-deb.sh
 
+# CentOS / RHEL 7
 FROM centos:7 AS centos7
 
 RUN yum -y update && \
@@ -108,6 +125,7 @@ COPY . /work
 WORKDIR /work
 RUN ./build-rpm.sh
 
+# CentOS / RHEL 8
 FROM centos:8 AS centos8
 
 RUN yum -y update && \
@@ -123,6 +141,7 @@ COPY . /work
 WORKDIR /work
 RUN ./build-rpm.sh
 
+# Sles / SUSE 12
 # Use OpenSUSE Leap 42.3 to emulate SLES 12: https://en.opensuse.org/openSUSE:Build_Service_cross_distribution_howto#Detect_a_distribution_flavor_for_special_code
 FROM opensuse/leap:42.3 as sles12
 
@@ -139,6 +158,7 @@ COPY . /work
 WORKDIR /work
 RUN ./build-rpm.sh
 
+# Sles / SUSE 15
 FROM opensuse/leap:15.1 as sles15
 
 RUN zypper -n install git systemd autoconf automake flex libtool libcurl-devel libopenssl-devel libyajl-devel gcc gcc-c++ zlib-devel rpm-build expect cmake systemd-devel systemd-rpm-macros \
@@ -160,6 +180,9 @@ COPY --from=buster /google-cloud-ops-agent*.deb /
 
 COPY --from=stretch /tmp/google-cloud-ops-agent.tgz /google-cloud-ops-agent-debian-stretch.tgz
 COPY --from=stretch /google-cloud-ops-agent*.deb /
+
+COPY --from=groovy /tmp/google-cloud-ops-agent.tgz /google-cloud-ops-agent-ubuntu-groovy.tgz
+COPY --from=groovy /google-cloud-ops-agent*.deb /
 
 COPY --from=focal /tmp/google-cloud-ops-agent.tgz /google-cloud-ops-agent-ubuntu-focal.tgz
 COPY --from=focal /google-cloud-ops-agent*.deb /
